@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<img class="topimg" src="amazon_topbanner.png" width="1800" height="60">
+<link rel="stylesheet" href="stylesheet.css">
+<meta charset="UTF-8">
+<style>
+
+Page 6 of 10
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+body {
+margin: 0;
+padding: 0;
+}
+.order-heading {
+background-color: #f2f2f2;
+padding: 10px;
+margin-bottom: 10px;
+}
+.order-details {
+padding: 10px;
+}
+.book-details {
+display: flex;
+margin-top: 10px;
+border: 1px solid #ddd;
+padding: 10px;
+}
+.book-img {
+flex: 1;
+}
+.book-info {
+flex: 2;
+padding-left: 10px;
+display: flex;
+justify-content: space-between;
+}
+.book-info p {
+margin: 0;
+}
+.order-heading,
+.genre-heading {
+display: flex;
+justify-content: space-between;
+}
+.right {
+float: right;
+width: 50%;
+box-sizing: border-box;
+padding: 10px;
+}
+.left {
+float: left;
+width: 50%;
+box-sizing: border-box;
+padding: 10px;
+}
+Page 7 of 10
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+.bottomimg {
+width: 100%;
+position: fixed;
+bottom: 0;
+}
+.query {
+padding-top: 50px;
+padding-left: 800px;
+}
+
+.order-summary {
+text-align: right;
+}
+.book-info-column {
+flex: 1;
+padding-left: 10px;
+}
+</style>
+</head>
+<body>
+<?php
+require_once ("connect.php");
+//Function to Display table heading
+function displayOrderHeading($orderID, $year, $totalPay, $totalBookCost,
+$refundAmount) {
+echo "<div class='order-heading'>";
+echo "<p>Order placed " . $year . "</p>";
+echo "<p>Total Â£" . $totalPay . "</p>";
+echo "<p>Discount: Â£" . $refundAmount . "</p>";
+echo "<p>OrderID " . $orderID . "</p>";
+echo "</div>";
+}
+// Function to find refund amount
+function calculateRefund($conn, $userID)
+{
+$refundQuery = "SELECT o.OrderID, o.Year, o.Totalpay, SUM(t.Quantity *
+b.Unitprice) AS totalBookCost, o.Totalpay - SUM(t.Quantity * b.Unitprice)
+AS refund FROM Orders o
+JOIN Trans t ON o.OrderID = t.OrderID
+JOIN Books b ON t.ISBN = b.ISBN
+WHERE o.UserID = '$userID'
+GROUP BY o.OrderID, o.Year, o.Totalpay
+HAVING refund > 0
+ORDER BY refund DESC";
+$refundResult = mysqli_query($conn, $refundQuery);
+
+// Check if Refund execution is successful
+if ($refundResult)
+{
+$refundRow = mysqli_fetch_array($refundResult);
+return $refundRow ? $refundRow['refund'] : 0; // return refund value if
+row is fetched
+}
+else
+{
+echo 'Error executing refund query: ' . mysqli_error($conn);//Disply Error
+echo 'Query: ' . $refundQuery;
+return 0;
+}
+}
+if (isset($_POST['queryID']))
+{
+$userID = mysqli_real_escape_string($conn, $_POST['queryID']);
+//Query to get user details
+$userQuery = "SELECT `UserID`, `Country`, `Age` FROM users WHERE UserID =
+'$userID'";
+$userResult = mysqli_query($conn, $userQuery);
+if (!$userResult)
+{
+echo 'Error: ' . mysqli_error($conn);
+}
+else
+{
+$userRow = mysqli_fetch_array($userResult);
+//Display User details
+echo "<div class='left'>";
+echo "<div class='user-details'>";
+echo "<p>User Details</p>";
+echo "<p>User ID: " . $userRow["UserID"] . "</p>";
+echo "<p>Country: " . $userRow["Country"] . "</p>";
+echo "</div>";
+echo "</div>";
+// Query to get order details
+$orderSummaryQuery = "SELECT COUNT(DISTINCT o.OrderID) AS OrdersPlaced,
+SUM(t.Quantity) AS BooksBought
+FROM Orders o
+INNER JOIN Trans t ON o.OrderID = t.OrderID
+WHERE o.UserID = '$userID'";
+$orderSummaryResult = mysqli_query($conn, $orderSummaryQuery);
+if ($orderSummaryResult)
+{
+$orderSummaryRow = mysqli_fetch_array($orderSummaryResult); echo "<div
+class='right'>";
+
+echo "<div class='order-summary'>";
+echo "<p>Order Summary</p>";
+echo "<p>" . $orderSummaryRow['OrdersPlaced'] . " Orders Placed</p>";
+echo "<p>" . $orderSummaryRow['BooksBought'] . " Books Bought</p>"; echo
+"</div>";
+echo "</div>";
+}
+else
+{
+echo 'Error fetching order summary: ' . mysqli_error($conn);
+}
+//Query to get order details
+$orderDetailsQuery = "SELECT o.OrderID, o.Year, o.Totalpay, b.ISBN,
+b.Title, b.Unitprice, b.Genre, b.ImageURL, AVG(br.Rating) AS AvgRating,
+t.Quantity AS BooksBought
+FROM Orders o
+INNER JOIN Trans t ON o.OrderID = t.OrderID
+INNER JOIN Books b ON t.ISBN = b.ISBN
+LEFT JOIN Bookratings br ON b.ISBN = br.ISBN WHERE o.UserID = '$userID'
+GROUP BY o.OrderID, o.Year, o.Totalpay, b.ISBN, b.Title, b.Unitprice,
+b.Genre, b.ImageURL, t.Quantity
+ORDER BY o.Year DESC, o.OrderID ASC, b.Genre ASC"; $orderDetailsResult =
+mysqli_query($conn, $orderDetailsQuery);
+if ($orderDetailsResult)
+{
+$uniqueOrderIDs = [];
+//Loop through to get and display order details
+while ($orderRow = mysqli_fetch_array($orderDetailsResult))
+{
+$currentOrderID = $orderRow['OrderID'];
+$refundAmount = calculateRefund($conn, $userID);
+if (!in_array($currentOrderID, $uniqueOrderIDs))
+{
+displayOrderHeading($orderRow['OrderID'], $orderRow['Year'],
+$orderRow['Totalpay'], $orderRow['BooksBought'] * $orderRow['Unitprice'],
+$refundAmount); $uniqueOrderIDs[] = $currentOrderID;
+}
+//Display book details
+echo "<div class='book-details'>";
+echo "<div class='book-img'>";
+echo "<img src='" . $orderRow['ImageURL'] . "' alt='Book Image'
+width='100'>"; echo "</div>";
+echo "<div class='book-info'>";
+echo "<div class='book-info-column'>";
+echo "<p>" . $orderRow['BooksBought'] . " of " . $orderRow['Title'] .
+"</p>"; echo "<p>" . $orderRow['ISBN'] . "</p>";
+echo "<p>Â£" . $orderRow['Unitprice'] . "</p>";
+Page 10 of 10
+if ($orderRow['AvgRating'] !== null)
+{
+$roundedRating = round($orderRow['AvgRating']);
+echo "<p>Rating: ";
+for ($i = 0;$i < $roundedRating;$i++)
+{
+echo "â˜…"; //Display Star symbol
+}
+echo "</p>";
+}
+echo "</div>";
+echo "<div class='book-info-column'>";
+echo "<p>" . $orderRow['Genre'] . "</p>";
+echo "</div>";
+echo "<div class='book-info-column' style='text-align: right;'>";
+//Right Align price information
+echo
+"<p>Â£" . ($orderRow['BooksBought'] * $orderRow['Unitprice']) . "</p>";
+echo "</div>";
+echo "</div>";
+echo "</div>";
+echo "</div>";
+}
+echo "</div>";
+}
+else
+{
+//Display error if order and book details are not fetched
+echo 'Error fetching order and book details: ' . mysqli_error($conn); }
+}
+}
+?>
+<div class="query">
+<table>
+<form action="index.php" method="post">
+<td><label>Query UserId:</label></td>
+<td><input type="text" id="queryID" name="queryID"></td> <td><input
+type="submit" value="Submit"></td>
+</form>
+</table>
+</div>
+<img class="bottomimg" src="amazon_bottombanner.png" width="1800"
+height="60"> </body>
+</html>
